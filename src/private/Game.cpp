@@ -48,6 +48,7 @@ int main()
     Vector2 pointA = {-1, -1}; // Initialize point A
     Vector2 pointB = {-1, -1}; // Initialize point B
     bool drawingLine = false;  // Flag to indicate if drawing line is in progress
+    DrawingMode mode = DrawingMode::POINT;
 
     // Main game loop
     while (!window.ShouldClose())
@@ -55,16 +56,37 @@ int main()
         // Input handling
         if (IsKeyPressed(KEY_SPACE))
         {
-            if (!drawingLine)
+
+            mode = DrawingMode::LINE;
+        }
+        else if (IsKeyPressed(KEY_Q))
+        {
+            mode = DrawingMode::POINT;
+        }
+
+        switch (mode)
+        {
+        case DrawingMode::LINE:
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
             {
-                pointA = SnapToGrid(GetMousePosition()); // Snap to grid for Point A
-                drawingLine = true;                      // Start drawing line
+                if (drawingLine)
+                {
+                    pointB = SnapToGrid(GetMousePosition());
+                    drawingLine = false;
+                }
+                else
+                {
+                    pointA = SnapToGrid(GetMousePosition());
+                    drawingLine = true;
+                }
             }
-            else
-            {
-                pointB = SnapToGrid(GetMousePosition()); // Snap to grid for Point B
-                drawingLine = false;                     // Stop drawing line
-            }
+            break;
+        case DrawingMode::POINT:
+            // print
+            break;
+
+        default:
+            break;
         }
 
         // Draw
@@ -81,27 +103,30 @@ int main()
                 }
             }
 
-            // Draw line if drawing is in progress
-            if (drawingLine && pointA.x != -1 && pointA.y != -1)
+            if (mode == DrawingMode::LINE)
             {
-                Vector2 snappedPoint = SnapToGrid(GetMousePosition());
-                DrawLineEx(pointA, snappedPoint, 2.0f, RED); // Draw line from Point A to current mouse position
-            }
+                // Draw line if drawing is in progress
+                if (drawingLine && pointA.x != -1 && pointA.y != -1)
+                {
+                    Vector2 snappedPoint = SnapToGrid(GetMousePosition());
+                    DrawLineEx(pointA, snappedPoint, 2.0f, RED); // Draw line from Point A to current mouse position
+                }
 
-            // Draw confirmed points and lines
-            if (pointB.x != -1 && pointB.y != -1)
-            {
-                DrawCircle(pointB.x, pointB.y, 3.0f, BLUE); // Draw confirmed Point B
-                DrawLineEx(pointA, pointB, 2.0f, BLUE);     // Draw line from Point A to Point B
-                lines.push_back({pointA, pointB});          // Add line to lines vector
-                pointA = pointB;
-                pointB = {-1, -1};
-                drawingLine = true;
-            }
+                // Draw confirmed points and lines
+                if (pointB.x != -1 && pointB.y != -1)
+                {
+                    DrawCircle(pointB.x, pointB.y, 3.0f, BLUE); // Draw confirmed Point B
+                    DrawLineEx(pointA, pointB, 2.0f, BLUE);     // Draw line from Point A to Point B
+                    lines.push_back({pointA, pointB});          // Add line to lines vector
+                    pointA = pointB;
+                    pointB = {-1, -1};
+                    drawingLine = true;
+                }
 
+                DrawCircle(SnapToGrid(GetMousePosition()).x, SnapToGrid(GetMousePosition()).y, 3.0f, BLACK); // Draw current mouse position snapped to grid
+            }
             DrawLines(lines); // Draw all lines
-
-            DrawCircle(SnapToGrid(GetMousePosition()).x, SnapToGrid(GetMousePosition()).y, 3.0f, BLACK); // Draw current mouse position snapped to grid
+            DrawText("Press SPACE to draw lines", 10, 10, 20, DARKGRAY);
         }
         EndDrawing();
     }
