@@ -2,14 +2,38 @@
 #include "raylib-cpp.hpp"
 #include "Entity/Player.hpp"
 
-struct Line
+const int gridWidth = 20;
+const int gridHeight = 20;
+
+struct line
 {
-    Vector2 start;
-    Vector2 end;
+    Vector2 pointA;
+    Vector2 pointB;
+};
+enum class DrawingMode
+{
+    LINE,
+    POINT
 };
 
-std::vector<Line> lines;
-std::vector<std::vector<Vector3>> sectors; // V
+std::vector<line> lines;
+
+Vector2 SnapToGrid(Vector2 point)
+{
+    // Snap the point to the nearest grid point
+    return {
+        static_cast<float>(static_cast<int>((point.x + GetScreenWidth() / (gridWidth * 2)) / (GetScreenWidth() / gridWidth)) * (GetScreenWidth() / gridWidth)),
+        static_cast<float>(static_cast<int>((point.y + GetScreenHeight() / (gridHeight * 2)) / (GetScreenHeight() / gridHeight)) * (GetScreenHeight() / gridHeight))};
+}
+
+void DrawLines(std::vector<line> lines)
+{
+    for (auto &line : lines)
+    {
+        DrawCircle(line.pointA.x, line.pointA.y, 3.0f, GREEN);
+        DrawLineEx(line.pointA, line.pointB, 2.0f, BLUE);
+    }
+}
 
 int main()
 {
@@ -17,30 +41,30 @@ int main()
     const int screenWidth = 800;
     const int screenHeight = 600;
 
-    raylib::Window window(screenWidth, screenHeight, "Doom Level Editor");
+    raylib::Window window(screenWidth, screenHeight, "Grid Points Example");
 
-    Camera camera = {
-        {5.0f, 5.0f, 5.0f},
-        {0.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        45.0f,
-        CAMERA_PERSPECTIVE};
+    SetTargetFPS(60);
+
+    Vector2 pointA = {-1, -1}; // Initialize point A
+    Vector2 pointB = {-1, -1}; // Initialize point B
+    bool drawingLine = false;  // Flag to indicate if drawing line is in progress
 
     // Main game loop
     while (!window.ShouldClose())
     {
-        // Update
-
-        // Input handling to draw lines
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        // Input handling
+        if (IsKeyPressed(KEY_SPACE))
         {
-            // Add new line
-            lines.push_back({GetMousePosition(), GetMousePosition()});
-        }
-        else if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
-        {
-            // Update last line
-            lines.back().end = GetMousePosition();
+            if (!drawingLine)
+            {
+                pointA = SnapToGrid(GetMousePosition()); // Snap to grid for Point A
+                drawingLine = true;                      // Start drawing line
+            }
+            else
+            {
+                pointB = SnapToGrid(GetMousePosition()); // Snap to grid for Point B
+                drawingLine = false;                     // Stop drawing line
+            }
         }
 
         // Draw
@@ -49,41 +73,35 @@ int main()
             ClearBackground(RAYWHITE);
 
             // Draw 2D grid
-            // Draw 2D lines
-            for (const auto &line : lines)
+            for (int x = 0; x <= screenWidth; x += screenWidth / gridWidth)
             {
-                DrawLineEx(line.start, line.end, 2.0f, RED);
-            }
-
-            BeginMode3D(camera);
-            {
-                DrawGrid(10, 1.0f);
-
-                // Draw 3D sectors and walls
-                for (const auto &sector : sectors)
+                for (int y = 0; y <= screenHeight; y += screenHeight / gridHeight)
                 {
-                    // Draw sector
-                    if (sector.size() > 2)
-                    {
-                        std::vector<Vector2> sector2D;
-                        for (const auto &vertex : sector)
-                        {
-                            sector2D.push_back({vertex.x, vertex.z}); // Convert Vector3 to Vector2
-                        }
-                        DrawTriangleFan(&sector2D[0], sector2D.size(), Fade(GREEN, 0.3f));
-                    }
-                    // Draw walls
-                    for (size_t i = 0; i < sector.size(); ++i)
-                    {
-                        Vector3 start3D = {sector[i].x, 0.0f, sector[i].z};
-                        Vector3 end3D = {sector[(i + 1) % sector.size()].x, 0.0f, sector[(i + 1) % sector.size()].z};
-                        DrawLine3D(start3D, end3D, DARKGREEN);
-                    }
+                    DrawCircle(x, y, 2.0f, LIGHTGRAY); // Draw grid points
                 }
             }
-            EndMode3D();
 
-            // Draw UI
+            // Draw line if drawing is in progress
+            if (drawingLine && pointA.x != -1 && pointA.y != -1)
+            {
+                Vector2 snappedPoint = SnapToGrid(GetMousePosition());
+                DrawLineEx(pointA, snappedPoint, 2.0f, RED); // Draw line from Point A to current mouse position
+            }
+
+            // Draw confirmed points and lines
+            if (pointB.x != -1 && pointB.y != -1)
+            {
+                DrawCircle(pointB.x, pointB.y, 3.0f, BLUE); // Draw confirmed Point B
+                DrawLineEx(pointA, pointB, 2.0f, BLUE);     // Draw line from Point A to Point B
+                lines.push_back({pointA, pointB});          // Add line to lines vector
+                pointA = pointB;
+                pointB = {-1, -1};
+                drawingLine = true;
+            }
+
+            DrawLines(lines); // Draw all lines
+
+            DrawCircle(SnapToGrid(GetMousePosition()).x, SnapToGrid(GetMousePosition()).y, 3.0f, BLACK); // Draw current mouse position snapped to grid
         }
         EndDrawing();
     }
