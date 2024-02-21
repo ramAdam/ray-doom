@@ -45,6 +45,12 @@ int main()
 
     SetTargetFPS(60);
 
+    Camera2D camera = {0};
+    camera.target = {screenWidth / 2, screenHeight / 2};
+    camera.offset = {screenWidth / 2, screenHeight / 2};
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
+
     Vector2 pointA = {-1, -1}; // Initialize point A
     Vector2 pointB = {-1, -1}; // Initialize point B
     bool drawingLine = false;  // Flag to indicate if drawing line is in progress
@@ -53,6 +59,7 @@ int main()
     // Main game loop
     while (!window.ShouldClose())
     {
+        camera.zoom += (GetMouseWheelMove() * 0.05f); // Adjust zoom level with mouse scroll wheel
         // Input handling
         if (IsKeyPressed(KEY_SPACE))
         {
@@ -63,7 +70,7 @@ int main()
         {
             mode = DrawingMode::POINT;
         }
-
+        // choose modes
         switch (mode)
         {
         case DrawingMode::LINE:
@@ -94,39 +101,43 @@ int main()
         {
             ClearBackground(RAYWHITE);
 
-            // Draw 2D grid
-            for (int x = 0; x <= screenWidth; x += screenWidth / gridWidth)
+            BeginMode2D(camera);
             {
-                for (int y = 0; y <= screenHeight; y += screenHeight / gridHeight)
+                // Draw 2D grid
+                for (int x = 0; x <= screenWidth; x += screenWidth / gridWidth)
                 {
-                    DrawCircle(x, y, 2.0f, LIGHTGRAY); // Draw grid points
+                    for (int y = 0; y <= screenHeight; y += screenHeight / gridHeight)
+                    {
+                        DrawCircle(x, y, 2.0f, LIGHTGRAY); // Draw grid points
+                    }
                 }
+
+                if (mode == DrawingMode::LINE)
+                {
+                    // Draw line if drawing is in progress
+                    if (drawingLine && pointA.x != -1 && pointA.y != -1)
+                    {
+                        Vector2 snappedPoint = SnapToGrid(GetMousePosition());
+                        DrawLineEx(pointA, snappedPoint, 2.0f, RED); // Draw line from Point A to current mouse position
+                    }
+
+                    // Draw confirmed points and lines
+                    if (pointB.x != -1 && pointB.y != -1)
+                    {
+                        DrawCircle(pointB.x, pointB.y, 3.0f, BLUE); // Draw confirmed Point B
+                        DrawLineEx(pointA, pointB, 2.0f, BLUE);     // Draw line from Point A to Point B
+                        lines.push_back({pointA, pointB});          // Add line to lines vector
+                        pointA = pointB;
+                        pointB = {-1, -1};
+                        drawingLine = true;
+                    }
+
+                    DrawCircle(SnapToGrid(GetMousePosition()).x, SnapToGrid(GetMousePosition()).y, 3.0f, BLACK); // Draw current mouse position snapped to grid
+                }
+                DrawLines(lines); // Draw all lines
+                DrawText("Press SPACE to draw lines", 10, 10, 20, DARKGRAY);
             }
-
-            if (mode == DrawingMode::LINE)
-            {
-                // Draw line if drawing is in progress
-                if (drawingLine && pointA.x != -1 && pointA.y != -1)
-                {
-                    Vector2 snappedPoint = SnapToGrid(GetMousePosition());
-                    DrawLineEx(pointA, snappedPoint, 2.0f, RED); // Draw line from Point A to current mouse position
-                }
-
-                // Draw confirmed points and lines
-                if (pointB.x != -1 && pointB.y != -1)
-                {
-                    DrawCircle(pointB.x, pointB.y, 3.0f, BLUE); // Draw confirmed Point B
-                    DrawLineEx(pointA, pointB, 2.0f, BLUE);     // Draw line from Point A to Point B
-                    lines.push_back({pointA, pointB});          // Add line to lines vector
-                    pointA = pointB;
-                    pointB = {-1, -1};
-                    drawingLine = true;
-                }
-
-                DrawCircle(SnapToGrid(GetMousePosition()).x, SnapToGrid(GetMousePosition()).y, 3.0f, BLACK); // Draw current mouse position snapped to grid
-            }
-            DrawLines(lines); // Draw all lines
-            DrawText("Press SPACE to draw lines", 10, 10, 20, DARKGRAY);
+            EndMode2D();
         }
         EndDrawing();
     }
